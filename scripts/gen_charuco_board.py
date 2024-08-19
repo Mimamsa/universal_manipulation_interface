@@ -17,7 +17,10 @@ from umi.common.cv_util import get_charuco_board, draw_charuco_board
 @click.option('-to', '--tag_id_offset', type=int, default=50)
 def main(output, tag_id_offset):
     dpi = 300
-    board = get_charuco_board(tag_id_offset=tag_id_offset)
+    board = get_charuco_board(
+        aruco_dict = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_4X4_100),
+        tag_id_offset = tag_id_offset,
+        grid_size=(8, 5), square_length_mm=50, tag_length_mm=30)
     board_img = draw_charuco_board(board=board, dpi=dpi)
     im = Image.fromarray(board_img)
     im.save(output, resolution=dpi)

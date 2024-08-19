@@ -195,7 +195,10 @@ def get_charuco_board(
         aruco_dict=cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_4X4_100), 
         tag_id_offset=50,
         grid_size=(8, 5), square_length_mm=50, tag_length_mm=30):
-    
+    """
+    Args
+    Returns
+    """
     aruco_dict = cv2.aruco.Dictionary(
         aruco_dict.bytesList[tag_id_offset:], 
         aruco_dict.markerSize)
@@ -207,14 +210,18 @@ def get_charuco_board(
     return board
 
 def draw_charuco_board(board, dpi=300, padding_mm=15):
+    """
+    """
     grid_size = np.array(board.getChessboardSize())
     square_length_mm = board.getSquareLength() * 1000
+
+    print('board size: ', grid_size * square_length_mm)
 
     mm_per_inch = 25.4
     board_size_pixel = (grid_size * square_length_mm + padding_mm * 2) / mm_per_inch * dpi
     board_size_pixel = board_size_pixel.round().astype(np.int64)
     padding_pixel = int(padding_mm / mm_per_inch * dpi)
-    board_img = board.generateImage(outSize=board_size_pixel, marginSize=padding_pixel)
+    board_img = board.generateImage(outSize=board_size_pixel)#, marginSize=padding_pixel)
     return board_img
 
 def get_gripper_width(tag_dict, left_id, right_id, nominal_z=0.072, z_tolerance=0.008):

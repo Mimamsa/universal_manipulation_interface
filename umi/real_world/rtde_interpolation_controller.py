@@ -37,8 +37,8 @@ class RTDEInterpolationController(mp.Process):
             max_rot_speed=0.16, # 5% of max speed
             launch_timeout=3,
             tcp_offset_pose=None,
-            payload_mass=None,
-            payload_cog=None,
+            payload_mass=None,  # Mass in kilograms
+            payload_cog=None,  # Center of Gravity, a vector [CoGx, CoGy, CoGz] specifying the displacement (in meters) from the toolmount. If not specified the current CoG will be used.
             joints_init=None,
             joints_init_speed=1.05,
             soft_real_time=False,
@@ -115,15 +115,15 @@ class RTDEInterpolationController(mp.Process):
         # build ring buffer
         if receive_keys is None:
             receive_keys = [
-                'ActualTCPPose',
+                'ActualTCPPose',  # Actual Cartesian coordinates of the tool: (x,y,z,rx,ry,rz), where rx, ry and rz is a rotation vector representation of the tool orientation
                 'ActualTCPSpeed',
                 'ActualQ',
                 'ActualQd',
 
                 'TargetTCPPose',
                 'TargetTCPSpeed',
-                'TargetQ',
-                'TargetQd'
+                'TargetQ',  # Target joint positions
+                'TargetQd'  # Target joint velocities
             ]
         rtde_r = RTDEReceiveInterface(hostname=robot_ip)
         example = dict()
