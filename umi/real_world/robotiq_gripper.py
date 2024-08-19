@@ -15,7 +15,7 @@ def norm_val(val, range) -> int:
     """Rescale the value within a specific range to [0,255], return as an integer. """
     val = clip_val(val, range)
     min_val, max_val = range
-    ret = round((val_val-min_val)*255/(max_val-min_val), 0)
+    ret = round((val-min_val)*255/(max_val-min_val), 0)
     return int(ret)
 
 def unnorm_val(val, range) -> float:
@@ -60,7 +60,7 @@ class RobotiqGripper:
         STOPPED_INNER_OBJECT = 2
         AT_DEST = 3
 
-    def __init__(self, hostname: str, port: int, socket_timeout: float = 2.0):
+    def __init__(self, hostname: str, port: int = 63352, socket_timeout: float = 2.0):
         """Constructor."""
         self.hostname = hostname
         self.port = port
@@ -147,6 +147,8 @@ class RobotiqGripper:
     def _is_ack(data: str):
         return data == b'ack'
 
+    # ============== mid level API ================
+
     def _reset(self):
         """
         Reset the gripper.
@@ -221,19 +223,19 @@ class RobotiqGripper:
         status = self._get_var(self.STA)
         return RobotiqGripper.GripperStatus(status) == RobotiqGripper.GripperStatus.ACTIVE
 
-    def get_min_position(self) -> int:
+    def get_min_position(self) -> float:
         """Returns the minimum position the gripper can reach (open position)."""
         return self._min_position
 
-    def get_max_position(self) -> int:
+    def get_max_position(self) -> float:
         """Returns the maximum position the gripper can reach (closed position)."""
         return self._max_position
 
-    def get_open_position(self) -> int:
+    def get_open_position(self) -> float:
         """Returns what is considered the open position for gripper (minimum position value)."""
         return self.get_min_position()
 
-    def get_closed_position(self) -> int:
+    def get_closed_position(self) -> float:
         """Returns what is considered the closed position for gripper (maximum position value)."""
         return self.get_max_position()
 
@@ -277,8 +279,8 @@ class RobotiqGripper:
         """Attempts to calibrate the open and closed positions, by slowly closing and opening the gripper.
         :param log: Whether to print the results to log.
         """
-        cali_speed = unnorm(64, [self._min_speed, self._max_speed])
-        cali_force = unnorm(1, [self._min_force, self._max_force])
+        cali_speed = unnorm_val(64, [self._min_speed, self._max_speed])
+        cali_force = unnorm_val(1, [self._min_force, self._max_force])
         
         # first try to open in case we are holding an object
         (position, status) = self.move_and_wait_for_pos(self.get_open_position(), cali_speed, cali_force)
@@ -311,13 +313,13 @@ class RobotiqGripper:
         the actual position that was requested, after being adjusted to the min/max calibrated range.
         """
 
-        clip_pos = norm(position, [self._min_position, self._max_position])
-        clip_spe = norm(speed, [self._min_speed, self._max_speed])
-        clip_for = norm(force, [self._min_force, self._max_force])
+        clip_pos = norm_val(position, [self._min_position, self._max_position])
+        clip_spe = norm_val(speed, [self._min_speed, self._max_speed])
+        clip_for = norm_val(force, [self._min_force, self._max_force])
 
         # moves to the given position with the given speed and force
         var_dict = OrderedDict([(self.POS, clip_pos), (self.SPE, clip_spe), (self.FOR, clip_for), (self.GTO, 1)])
-        return self._set_vars(var_dict), unnorm(clip_pos, [self._min_position, self._max_position])
+        return self._set_vars(var_dict), unnorm_val(clip_pos, [self._min_position, self._max_position])
 
     def move_and_wait_for_pos(self, position: float, speed: float, force: float) -> Tuple[float, ObjectStatus]:  # noqa
         """Sends commands to start moving towards the given position, with the specified speed and force, and

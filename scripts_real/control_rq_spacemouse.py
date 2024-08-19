@@ -14,17 +14,17 @@ import pickle
 from multiprocessing.managers import SharedMemoryManager
 import scipy.spatial.transform as st
 from umi.real_world.spacemouse_shared_memory import Spacemouse
-from umi.real_world.wsg_controller import RobotiqGripper
+from umi.real_world.robotiq_controller import RobotiqController
 from umi.common.precise_sleep import precise_wait
 
 # %%
 @click.command()
 @click.option('-o', '--output', default=None, type=str)
-@click.option('-h', '--hostname', default='172.24.95.18')
-@click.option('-p', '--port', type=int, default=1000)
+@click.option('-h', '--hostname', default='192.168.10.3')
+@click.option('-p', '--port', type=int, default=63352)
 @click.option('-f', '--frequency', type=float, default=30)
 @click.option('-ms', '--max_speed', type=float, default=150.0)
-@click.option('-mp', '--max_pos', type=float, default=110.0)
+@click.option('-mp', '--max_pos', type=float, default=50.0)
 def main(output, hostname, port, frequency, max_speed, max_pos):
     duration = 60.0
     get_max_k = int(duration * frequency)
@@ -32,7 +32,7 @@ def main(output, hostname, port, frequency, max_speed, max_pos):
     dt = 1/frequency
 
     with SharedMemoryManager() as shm_manager:
-        with RobotiqGripper(
+        with RobotiqController(
             shm_manager=shm_manager,
             hostname=hostname,
             port=port,
@@ -46,7 +46,6 @@ def main(output, hostname, port, frequency, max_speed, max_pos):
                 target_pos_traj = list()
                 target_timestamps = list()
                 try:
-
                     # to account for recever interfance latency, use target pose
                     # to init buffer.
                     state = gripper.get_state()
@@ -63,8 +62,9 @@ def main(output, hostname, port, frequency, max_speed, max_pos):
 
                         precise_wait(t_sample)
                         sm_state = sm.get_motion_state_transformed()
-                        dpos = sm_state[0] * max_speed / frequency  # sm_state[0] -> froward-backward translation
+                        dpos = sm_state[0] * max_speed / frequency  # sm_state[0] -> froward-backward translation, [-0.7,0.7]
                         target_pos = np.clip(target_pos + dpos, 0, max_pos)
+                        #print(target_pos)
                         target_timestamp = t_command_target-time.monotonic()+time.time()
 
                         gripper.schedule_waypoint(target_pos, target_timestamp)
@@ -80,7 +80,7 @@ def main(output, hostname, port, frequency, max_speed, max_pos):
                             'target_position': np.array(target_pos_traj),
                             'target_timestamp': np.array(target_timestamps),
                             'actual_position': robot_state['gripper_position'],
-                            'actual_measure_timestamp': robot_state['gripper_measure_timestamp'],
+                            #'actual_measure_timestamp': robot_state['gripper_measure_timestamp'],
                             'actual_receive_timestamp': robot_state['gripper_receive_timestamp']
                         }
                         print(f'Saving results to {output}')

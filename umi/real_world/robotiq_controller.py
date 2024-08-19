@@ -186,6 +186,9 @@ class RobotiqController(mp.Process):
                     t_target = t_now
                     target_pos = pose_interp(t_target)[0]
                     target_vel = (target_pos - pose_interp(t_target - dt)[0]) / dt
+                    gripper.move_and_wait_for_pos(target_pos, target_vel, 20)  # minimum force 20N
+                    #gripper.move(target_pos, target_vel, 20)  # minimum force 20N
+                    #print(target_pos, target_vel)
 
                     # get state
                     state = {
@@ -237,9 +240,9 @@ class RobotiqController(mp.Process):
                         elif cmd == Command.RESTART_PUT.value:
                                 t_start = command['target_time'] - time.time() + time.monotonic()
                                 iter_idx = 1
-                            else:
-                                keep_running = False
-                                break
+                        else:
+                            keep_running = False
+                            break
 
                     # first loop successful, ready to receive command
                     if iter_idx == 0:
