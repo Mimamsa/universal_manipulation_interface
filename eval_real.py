@@ -62,7 +62,13 @@ from umi.common.pose_util import pose_to_mat, mat_to_pose
 OmegaConf.register_new_resolver("eval", eval, replace=True)
 
 def solve_table_collision(ee_pose, gripper_width, height_threshold):
-    finger_thickness = 25.5 / 1000
+    """Prevent hitting on table. Assume TCP is in the center of the soft fingers.
+    Args
+        ee_poses (npt.NDArray[np.float, Literal["N",7]]): End effectors' poses. N is number of robots.
+        gripper_width (float): Gripper width (unit: meter).
+        height_threshold (float): Height of table in base frame (unit: meter).
+    """
+    finger_thickness = 25.5 / 1000  # meter
     keypoints = list()
     for dx in [-1, 1]:
         for dy in [-1, 1]:
@@ -74,6 +80,11 @@ def solve_table_collision(ee_pose, gripper_width, height_threshold):
     ee_pose[2] += delta
 
 def solve_sphere_collision(ee_poses, robots_config):
+    """
+    Args
+        ee_poses (npt.NDArray[np.float, Literal["N",7]]): End effectors' poses. N is number of robots.
+        robots_config (dict):
+    """
     num_robot = len(robots_config)
     this_that_mat = np.identity(4)
     this_that_mat[:3, 3] = np.array([0, 0.89, 0]) # TODO: very hacky now!!!!
