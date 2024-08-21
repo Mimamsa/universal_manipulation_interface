@@ -20,7 +20,7 @@ def norm_val(val, range) -> int:
 
 def unnorm_val(val, range) -> float:
     """ """
-    val = clip_val(val, range)
+    val = clip_val(val, [0, 255])
     min_val, max_val = range
     ret = val/255.*(max_val-min_val)+min_val
     return round(ret, 3)
@@ -173,6 +173,22 @@ class RobotiqGripper:
             self._set_var(self.ATR, 0)
         time.sleep(0.5)
 
+    def get_current_position_raw(self) -> int:
+        """Returns the current position as returned by the physical hardware."""
+        return self._get_var(self.POS)
+
+    def get_current_speed_raw(self) -> int:
+        """Returns the current velocity as returned by the physical hardware."""
+        return self._get_var(self.SPE)
+
+    def get_current_force_raw(self) -> int:
+        """Returns the current force as returned by the physical hardware."""
+        return self._get_var(self.FOR)
+
+    def get_position_requested_raw(self) -> int:
+        """position requested (echo of last commanded position) """
+        return self._get_var(self.PRE)
+
     # =============== high level API ===============
 
     def activate(self, auto_calibrate: bool = True):
@@ -279,7 +295,7 @@ class RobotiqGripper:
         """Attempts to calibrate the open and closed positions, by slowly closing and opening the gripper.
         :param log: Whether to print the results to log.
         """
-        cali_speed = unnorm_val(64, [self._min_speed, self._max_speed])
+        cali_speed = unnorm_val(255, [self._min_speed, self._max_speed])
         cali_force = unnorm_val(1, [self._min_force, self._max_force])
         
         # first try to open in case we are holding an object
@@ -292,14 +308,18 @@ class RobotiqGripper:
         if RobotiqGripper.ObjectStatus(status) != RobotiqGripper.ObjectStatus.AT_DEST:
             raise RuntimeError(f"Calibration failed because of an object: {str(status)}")
         assert position <= self._max_position
-        self._max_position = position
+        max_pos = position
 
         # try to open as far as possible, and record the number
         (position, status) = self.move_and_wait_for_pos(self.get_open_position(), cali_speed, cali_force)
         if RobotiqGripper.ObjectStatus(status) != RobotiqGripper.ObjectStatus.AT_DEST:
             raise RuntimeError(f"Calibration failed because of an object: {str(status)}")
         assert position >= self._min_position
-        self._min_position = position
+        min_pos = position
+
+        # set _min_position and _max_position
+        self._min_position = min_pos
+        self._max_position = max_pos
 
         if log:
             print(f"Gripper auto-calibrated to [{self.get_min_position()}, {self.get_max_position()}]")
@@ -319,7 +339,10 @@ class RobotiqGripper:
 
         # moves to the given position with the given speed and force
         var_dict = OrderedDict([(self.POS, clip_pos), (self.SPE, clip_spe), (self.FOR, clip_for), (self.GTO, 1)])
-        return self._set_vars(var_dict), unnorm_val(clip_pos, [self._min_position, self._max_position])
+        curr_pos = self._set_vars(var_dict)
+
+        # print('{}: {}'.format(self.get_current_position_raw(), time.monotonic()))
+        return curr_pos, unnorm_val(clip_pos, [self._min_position, self._max_position])
 
     def move_and_wait_for_pos(self, position: float, speed: float, force: float) -> Tuple[float, ObjectStatus]:  # noqa
         """Sends commands to start moving towards the given position, with the specified speed and force, and

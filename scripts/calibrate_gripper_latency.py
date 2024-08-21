@@ -15,35 +15,47 @@ from collections import deque
 from tqdm import tqdm
 from multiprocessing.managers import SharedMemoryManager
 from umi.real_world.wsg_controller import WSGController
+from umi.real_world.robotiq_controller import RobotiqController
 from umi.common.precise_sleep import precise_sleep
 from umi.common.latency_util import get_latency
 from matplotlib import pyplot as plt
 
 # %%
 @click.command()
-@click.option('-h', '--hostname', default='172.24.95.18')
-@click.option('-p', '--port', type=int, default=1000)
+@click.option('-h', '--hostname', default='192.168.10.3')
+@click.option('-p', '--port', type=int, default=63352)
 @click.option('-f', '--frequency', type=float, default=30)
 def main(hostname, port, frequency):
-    duration = 10.0
+    duration = 10.0  # sec
     sample_dt = 1 / 100
     k = int(duration / sample_dt)
     sample_t = np.linspace(0, duration, k)
-    value = np.sin(sample_t * duration / 1.5) * 0.5 + 0.5
+    # value = np.sin(sample_t * duration / 1.5) * 0.5 + 0.5
+    # width = value * 80
+    value = np.sin(sample_t*duration/7) * 0.25 + 0.25
     width = value * 80
 
     with SharedMemoryManager() as shm_manager:
-        with WSGController(
+        # with WSGController(
+        #     shm_manager=shm_manager,
+        #     hostname=hostname,
+        #     port=port,
+        #     frequency=frequency,
+        #     move_max_speed=200.0,
+        #     get_max_k=int(k*1.2),
+        #     command_queue_size=int(k*1.2),
+        #     verbose=False) as gripper:
+        with RobotiqController(
             shm_manager=shm_manager,
             hostname=hostname,
             port=port,
             frequency=frequency,
-            move_max_speed=200.0,
+            move_max_speed=150.0,
             get_max_k=int(k*1.2),
             command_queue_size=int(k*1.2),
             verbose=False) as gripper:
-            gripper.start_wait()
 
+            gripper.start_wait()
             gripper.schedule_waypoint(width[0], time.time() + 0.3)
             precise_sleep(1.0)
 

@@ -160,9 +160,11 @@ class RobotiqController(mp.Process):
                 print("[RobotiqController] Activating gripper...")
                 gripper.activate()
                 if self.home_to_open:
-                    gripper.move_and_wait_for_pos(0, 150, 185)
+                    open_pos = gripper.get_open_position()
+                    gripper.move_and_wait_for_pos(open_pos, 150, 185)
                 else:
-                    gripper.move_and_wait_for_pos(50, 150, 185)
+                    close_pos = gripper.get_open_position()
+                    gripper.move_and_wait_for_pos(close_pos, 150, 185)
 
                 # get initial position (TODO)
                 # curr_info = 
@@ -186,8 +188,8 @@ class RobotiqController(mp.Process):
                     t_target = t_now
                     target_pos = pose_interp(t_target)[0]
                     target_vel = (target_pos - pose_interp(t_target - dt)[0]) / dt
-                    gripper.move_and_wait_for_pos(target_pos, target_vel, 20)  # minimum force 20N
-                    #gripper.move(target_pos, target_vel, 20)  # minimum force 20N
+                    # gripper.move_and_wait_for_pos(target_pos, target_vel, 20)  # Do not wait, for reason of get_curr_pos() imediatedly.
+                    gripper.move(target_pos, target_vel, 20)  # minimum force 20N
                     #print(target_pos, target_vel)
 
                     # get state
