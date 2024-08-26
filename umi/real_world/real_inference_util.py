@@ -175,6 +175,12 @@ def get_real_umi_action(
         env_obs: Dict[str, np.ndarray], 
         action_pose_repr: str='abs'
     ):
+    """
+    Args
+        action ():
+        env_obs (Dict[str, np.ndarray]):
+        action_pose_repr (str):
+    """
 
     n_robots = int(action.shape[-1] // 10)
     env_action = list()

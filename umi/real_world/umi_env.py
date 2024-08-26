@@ -7,8 +7,11 @@ import math
 import cv2
 from multiprocessing.managers import SharedMemoryManager
 from umi.real_world.rtde_interpolation_controller import RTDEInterpolationController
-from umi.real_world.wsg_controller import WSGController
 from umi.real_world.franka_interpolation_controller import FrankaInterpolationController
+from umi.real_world.dummy_controller import DummyInterpolationController
+from umi.real_world.wsg_controller import WSGController
+from umi.real_world.robotiq_controller import RobotiqController
+from umi.real_world.dummy_gripper import DummyGripperController
 from umi.real_world.multi_uvc_camera import MultiUvcCamera, VideoRecorder
 from diffusion_policy.common.timestamp_accumulator import (
     TimestampActionAccumulator,
@@ -37,6 +40,7 @@ class UmiEnv:
             # env params
             frequency=20,
             robot_type='ur5',
+            gripper_type='wsg50',
             # obs
             obs_image_resolution=(224,224),
             max_obs_buffer_size=60,
@@ -228,6 +232,7 @@ class UmiEnv:
         if not init_joints:
             j_init = None
 
+        # Load robotic arm
         if robot_type.startswith('ur5'):
             robot = RTDEInterpolationController(
                 shm_manager=shm_manager,
@@ -258,14 +263,52 @@ class UmiEnv:
                 verbose=False,
                 receive_latency=robot_obs_latency
             )
-        
-        gripper = WSGController(
-            shm_manager=shm_manager,
-            hostname=gripper_ip,
-            port=gripper_port,
-            receive_latency=gripper_obs_latency,
-            use_meters=True
-        )
+        elif rc['robot_type'].startswith('dummy'):
+            robot = DummyInterpolationController(
+                shm_manager=shm_manager,
+                robot_ip=robot_ip,
+                frequency=500,
+                lookahead_time=0.1,
+                gain=300,
+                max_pos_speed=max_pos_speed*cube_diag,
+                max_rot_speed=max_rot_speed*cube_diag,
+                launch_timeout=3,
+                tcp_offset_pose=[0,0,tcp_offset,0,0,0],
+                payload_mass=None,
+                payload_cog=None,
+                joints_init=j_init,
+                joints_init_speed=1.05,
+                soft_real_time=False,
+                verbose=False,
+                receive_keys=None,
+                receive_latency=robot_obs_latency
+            )
+
+        # Load gripper
+        if gripper_type.startswith('wsg50'):
+            gripper = WSGController(
+                shm_manager=shm_manager,
+                hostname=gripper_ip,
+                port=gripper_port,
+                receive_latency=gripper_obs_latency,
+                use_meters=True
+            )
+        elif gripper_type.startswith('hand-e'):
+            gripper = RobotiqGripperController(
+                shm_manager=shm_manager,
+                hostname=gripper_ip,
+                port=gripper_port,
+                receive_latency=gripper_obs_latency,
+                use_meters=True
+            )
+        elif gripper_type.startswith('dummy'):
+            gripper = DummyGripperController(
+                shm_manager=shm_manager,
+                hostname=gripper_ip,
+                port=gripper_port,
+                receive_latency=gripper_obs_latency,
+                use_meters=True
+            )
 
         self.camera = camera
         self.robot = robot

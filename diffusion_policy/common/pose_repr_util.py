@@ -46,6 +46,16 @@ def compute_relative_pose(pos, rot, base_pos, base_rot_mat,
 
 
 def convert_pose_mat_rep(pose_mat, base_pose_mat, pose_rep='abs', backward=False):
+    """Convert pose matrix representation.
+    e.g. pose_mat: predicted pose, base_pose_mat: EE pose, backward=True
+    
+    Args
+        pose_mat (NDArray[Shape["*, 4, 4"], Float]):
+        base_pose_mat (NDArray[Shape["4, 4"], Float]):
+        pose_rep (str): There are 4 representations: abs, rel, relative and delta.
+        backward (bool):
+    Returns
+    """
     if not backward:
         # training transform
         if pose_rep == 'abs':
