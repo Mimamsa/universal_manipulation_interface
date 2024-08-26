@@ -130,14 +130,14 @@ class DummyInterpolationController(mp.Process):
         # for key in receive_keys:
             # example[key] = np.array(getattr(rtde_r, 'get'+key)())
         example = {
-            'ActualTCPPose': [0., 0., 0., 0., 0., 0.],
-            'ActualTCPSpeed': [0., 0., 0., 0., 0., 0.],
-            'ActualQ': [0., 0., 0., 0., 0., 0.],
-            'ActualQd': [0., 0., 0., 0., 0., 0.],
-            'TargetTCPPose': [0., 0., 0., 0., 0., 0.],
-            'TargetTCPSpeed':[0., 0., 0., 0., 0., 0.],
-            'TargetQ': [0., 0., 0., 0., 0., 0.],
-            'TargetQd': [0., 0., 0., 0., 0., 0.]
+            'ActualTCPPose': np.array([0., 0., 0., 0., 0., 0.]),
+            'ActualTCPSpeed': np.array([0., 0., 0., 0., 0., 0.]),
+            'ActualQ': np.array([0., 0., 0., 0., 0., 0.]),
+            'ActualQd': np.array([0., 0., 0., 0., 0., 0.]),
+            'TargetTCPPose': np.array([0., 0., 0., 0., 0., 0.]),
+            'TargetTCPSpeed': np.array([0., 0., 0., 0., 0., 0.]),
+            'TargetQ': np.array([0., 0., 0., 0., 0., 0.]),
+            'TargetQd': np.array([0., 0., 0., 0., 0., 0.])
         }
         example['robot_receive_timestamp'] = time.time()
         example['robot_timestamp'] = time.time()
