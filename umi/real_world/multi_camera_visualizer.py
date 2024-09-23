@@ -1,8 +1,13 @@
+# import sys
+# sys.OpenCV_LOADER_DEBUG = True
+# from matplotlib import pyplot as plt
+
 import time
 import multiprocessing as mp
 import numpy as np
 import cv2
 from threadpoolctl import threadpool_limits
+
 
 class MultiCameraVisualizer(mp.Process):
     def __init__(self,
@@ -48,6 +53,8 @@ class MultiCameraVisualizer(mp.Process):
     def run(self):
         cv2.setNumThreads(1)
         threadpool_limits(1)
+        # fig = plt.figure()
+
         channel_slice = slice(None)
         if self.rgb_to_bgr:
             channel_slice = slice(None,None,-1)
@@ -75,6 +82,12 @@ class MultiCameraVisualizer(mp.Process):
                         # opencv uses bgr
                         vis_img[h_start:h_end,w_start:w_end
                             ] = color[idx,:,:,channel_slice]
+
+            # Display
             cv2.imshow(self.window_name, vis_img)
             cv2.pollKey()
+            # fig.figimage(vis_img)
+            # fig.canvas.draw()
+            # plt.pause(0.001)
+
             time.sleep(1 / self.vis_fps)

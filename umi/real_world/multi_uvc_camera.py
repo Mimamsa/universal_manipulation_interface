@@ -71,6 +71,7 @@ class MultiUvcCamera:
 
         self.cameras = cameras
         self.shm_manager = shm_manager
+        print('number of cameras: ', len(self.cameras))
 
     def __enter__(self):
         self.start()

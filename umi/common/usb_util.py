@@ -63,6 +63,10 @@ def get_sorted_v4l_paths(by_id=True):
     """
     If by_id, sort devices by device name + serial number (preserves device order)
     else, sort devices by usb bus id (preserves usb port order)
+    Args
+        by_id (bool):
+    Returns
+        (list[str]):
     """
     
     dirname = 'by-id'

@@ -2,6 +2,8 @@
 Usage:
 (umi): python scripts_real/eval_real_umi.py -i data/outputs/2023.10.26/02.25.30_train_diffusion_unet_timm_umi/checkpoints/latest.ckpt -o data_local/cup_test_data
 
+python3 eval_real.py -i ../cup_wild_vit_l_1img.ckpt -o ../data_local/cup_test_data -rc example/eval_dummy_robots_config.yaml
+
 ================ Human in control ==============
 Robot movement:
 Move your SpaceMouse to move the robot EEF (locked in xy plane).
@@ -206,6 +208,7 @@ def main(input, output, robot_config,
                 max_pos_speed=2.0,
                 max_rot_speed=6.0,
                 shm_manager=shm_manager) as env:
+            print('before cv2.setNumThreads(2)')
             cv2.setNumThreads(2)
             print("Waiting for camera")
             time.sleep(1.0)
@@ -491,6 +494,7 @@ def main(input, output, robot_config,
                             raw_action = result['action_pred'][0].detach().to('cpu').numpy()
                             action = get_real_umi_action(raw_action, obs, action_pose_repr)
                             print('Inference latency:', time.time() - s)
+                            print('action: ', action)
                         
                         # convert policy action to env actions
                         this_target_poses = action

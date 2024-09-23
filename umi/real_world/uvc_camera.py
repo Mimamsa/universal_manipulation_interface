@@ -230,7 +230,7 @@ class UvcCamera(mp.Process):
                 ts = time.time()
                 ret = cap.grab()
                 assert ret
-                
+
                 # directly write into shared memory to avoid copy
                 frame = self.video_recorder.get_img_buffer()
                 ret, frame = cap.retrieve(frame)
@@ -239,7 +239,7 @@ class UvcCamera(mp.Process):
                 mt_cap = cap.get(cv2.CAP_PROP_POS_MSEC) / 1000
                 t_cap = mt_cap - time.monotonic() + time.time()
                 t_cal = t_recv - self.receive_latency # calibrated latency
-                     
+
                 # record frame
                 if self.video_recorder.is_ready():
                     self.video_recorder.write_img_buffer(frame, frame_time=t_cal)
@@ -248,7 +248,7 @@ class UvcCamera(mp.Process):
                 data['camera_receive_timestamp'] = t_recv
                 data['camera_capture_timestamp'] = t_cap
                 data['color'] = frame
-                
+
                 # apply transform
                 put_data = data
                 if self.transform is not None:

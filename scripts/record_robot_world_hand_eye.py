@@ -51,6 +51,8 @@ def main(output, robot_ip, v4l_idx):
             UvcCamera(
                 shm_manager=shm_manager,
                 dev_video_path=v4l_path,
+                # ValueError: could not broadcast input array from shape (720,1280,3) into shape (1080,1920,3)
+                # resolution=(1920,1080)) as camera,\
                 resolution=(1920,1080)) as camera,\
             RTDEInterpolationController(
                 shm_manager=shm_manager,

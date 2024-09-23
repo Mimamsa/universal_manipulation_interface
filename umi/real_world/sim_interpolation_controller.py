@@ -6,8 +6,7 @@ from multiprocessing.managers import SharedMemoryManager
 import scipy.interpolate as si
 import scipy.spatial.transform as st
 import numpy as np
-# from rtde_control import RTDEControlInterface
-# from rtde_receive import RTDEReceiveInterface
+import socket
 from umi.shared_memory.shared_memory_queue import (
     SharedMemoryQueue, Empty)
 from umi.shared_memory.shared_memory_ring_buffer import SharedMemoryRingBuffer
@@ -20,7 +19,7 @@ class Command(enum.Enum):
     SCHEDULE_WAYPOINT = 2
 
 
-class DummyInterpolationController(mp.Process):
+class SimInterpolationController(mp.Process):
     """
     To ensure sending command to the robot with predictable latency
     this controller need its separate process (due to python GIL)
@@ -30,7 +29,7 @@ class DummyInterpolationController(mp.Process):
     def __init__(self,
             shm_manager: SharedMemoryManager, 
             robot_ip, 
-            frequency=125, 
+            frequency=30, 
             lookahead_time=0.1, 
             gain=300,
             max_pos_speed=0.25, # 5% of max speed
@@ -79,7 +78,7 @@ class DummyInterpolationController(mp.Process):
             joints_init = np.array(joints_init)
             assert joints_init.shape == (6,)
 
-        super().__init__(name="DummyPositionalController")
+        super().__init__(name="SimPositionalController")
         self.robot_ip = robot_ip
         self.frequency = frequency
         self.lookahead_time = lookahead_time
@@ -126,9 +125,14 @@ class DummyInterpolationController(mp.Process):
                 'TargetQd'  # Target joint velocities
             ]
         # rtde_r = RTDEReceiveInterface(hostname=robot_ip)
+        self.socket_c = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.socket_c.connect((robot_ip, 8089))
+        self.socket_r = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.socket_r.connect((robot_ip, 8088))
+
         # example = dict()
         # for key in receive_keys:
-            # example[key] = np.array(getattr(rtde_r, 'get'+key)())
+        #     example[key] = np.array(getattr(rtde_r, 'get'+key)())
         example = {
             'ActualTCPPose': np.zeros(6,),
             'ActualTCPSpeed': np.zeros(6,),
@@ -139,6 +143,7 @@ class DummyInterpolationController(mp.Process):
             'TargetQ': np.zeros(6,),
             'TargetQd': np.zeros(6,)
         }
+
         example['robot_receive_timestamp'] = time.time()
         example['robot_timestamp'] = time.time()
         ring_buffer = SharedMemoryRingBuffer.create_from_examples(
@@ -160,7 +165,7 @@ class DummyInterpolationController(mp.Process):
         if wait:
             self.start_wait()
         if self.verbose:
-            print(f"[DummyPositionalController] Controller process spawned at {self.pid}")
+            print(f"[SimPositionalController] Controller process spawned at {self.pid}")
 
     def stop(self, wait=True):
         message = {
@@ -241,16 +246,16 @@ class DummyInterpolationController(mp.Process):
 
         try:
             if self.verbose:
-                print(f"[DummyPositionalController] Connect to robot: {robot_ip}")
+                print(f"[SimPositionalController] Connect to robot: {robot_ip}")
 
             # set parameters
             # if self.tcp_offset_pose is not None:
-                # rtde_c.setTcp(self.tcp_offset_pose)
+            #     rtde_c.setTcp(self.tcp_offset_pose)
             # if self.payload_mass is not None:
-                # if self.payload_cog is not None:
-                    # assert rtde_c.setPayload(self.payload_mass, self.payload_cog)
-                # else:
-                    # assert rtde_c.setPayload(self.payload_mass)
+            #     if self.payload_cog is not None:
+            #         assert rtde_c.setPayload(self.payload_mass, self.payload_cog)
+            #     else:
+            #         assert rtde_c.setPayload(self.payload_mass)
             
             # init pose
             # if self.joints_init is not None:
@@ -259,7 +264,7 @@ class DummyInterpolationController(mp.Process):
             # main loop
             dt = 1. / self.frequency
             # curr_pose = rtde_r.getActualTCPPose()
-            curr_pose = [0., 0., 0., 0., 0., 0.]
+            curr_pose = np.array([0.392, 0.234, 0.487, -3.14, 0, 1.57])
             # use monotonic time to make sure the control loop never go backward
             curr_t = time.monotonic()
             last_waypoint_time = curr_t
@@ -271,6 +276,7 @@ class DummyInterpolationController(mp.Process):
             t_start = time.monotonic()
             iter_idx = 0
             keep_running = True
+            first_run = True
             while keep_running:
                 # start control iteration
                 # t_start = rtde_c.initPeriod()
@@ -280,21 +286,35 @@ class DummyInterpolationController(mp.Process):
                 # diff = t_now - pose_interp.times[-1]
                 # if diff > 0:
                 #     print('extrapolate', diff)
+                if first_run:
+                    pose_command = curr_pose
+                    first_run = False
                 pose_command = pose_interp(t_now)
                 vel = 0.5
                 acc = 0.5
                 # assert rtde_c.servoL(pose_command, 
-                    # vel, acc, # dummy, not used by ur5
-                    # dt, 
-                    # self.lookahead_time, 
-                    # self.gain)
-                
+                #     vel, acc, # dummy, not used by ur5
+                #     dt, 
+                #     self.lookahead_time, 
+                #     self.gain)
+                byte_str = 'movL {:.5f},{:.5f},{:.5f},{:.5f},{:.5f},{:.5f}'.format(*pose_command).encode()
+                self.socket_c.send(byte_str)
+                ack = self.socket_c.recv(64)
+                if len(ack) <= 0:
+                    print('ack<=0')
+                    break
+
+                # get robot state
+                self.socket_r.send(b'getEEPose')
+                state_bytestr = self.socket_r.recv(64)
+                tcp_pose = state_bytestr.decode().split(',')
+
                 # update robot state
                 # state = dict()
                 # for key in self.receive_keys:
-                    # state[key] = np.array(getattr(rtde_r, 'get'+key)())
-                state = {
-                    'ActualTCPPose': np.zeros(6,),
+                #     state[key] = np.array(getattr(rtde_r, 'get'+key)())
+                state = {  # TODO: Get robot states from simulator
+                    'ActualTCPPose': tcp_pose,
                     'ActualTCPSpeed': np.zeros(6,),
                     'ActualQ': np.zeros(6,),
                     'ActualQd': np.zeros(6,),
@@ -347,7 +367,7 @@ class DummyInterpolationController(mp.Process):
                         )
                         last_waypoint_time = t_insert
                         if self.verbose:
-                            print("[DummyPositionalController] New pose target:{} duration:{}s".format(
+                            print("[SimPositionalController] New pose target:{} duration:{}s".format(
                                 target_pose, duration))
                     elif cmd == Command.SCHEDULE_WAYPOINT.value:
                         target_pose = command['target_pose']
@@ -379,7 +399,7 @@ class DummyInterpolationController(mp.Process):
                 iter_idx += 1
 
                 if self.verbose:
-                    print(f"[DummyPositionalController] Actual frequency {1/(time.monotonic() - t_now)}")
+                    print(f"[SimPositionalController] Actual frequency {1/(time.monotonic() - t_now)}")
 
         finally:
             # manditory cleanup
@@ -390,7 +410,9 @@ class DummyInterpolationController(mp.Process):
             # rtde_c.stopScript()
             # rtde_c.disconnect()
             # rtde_r.disconnect()
+            self.socket_c.close()
+            self.socket_r.close()
             self.ready_event.set()
 
             if self.verbose:
-                print(f"[DummyPositionalController] Disconnected from robot: {robot_ip}")
+                print(f"[SimPositionalController] Disconnected from robot: {robot_ip}")

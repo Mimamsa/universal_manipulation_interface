@@ -8,6 +8,7 @@ from multiprocessing.managers import SharedMemoryManager
 from umi.real_world.rtde_interpolation_controller import RTDEInterpolationController
 from umi.real_world.franka_interpolation_controller import FrankaInterpolationController
 from umi.real_world.dummy_controller import DummyInterpolationController
+from umi.real_world.sim_interpolation_controller import SimInterpolationController
 from umi.real_world.wsg_controller import WSGController
 from umi.real_world.robotiq_controller import RobotiqController
 from umi.real_world.dummy_gripper import DummyGripperController
@@ -82,6 +83,12 @@ class BimanualUmiEnv:
         # Wait for all v4l cameras to be back online
         time.sleep(0.1)
         v4l_paths = get_sorted_v4l_paths()
+
+        # pop non-relevant paths
+        for i, p in enumerate(v4l_paths):
+            if 'Elgato' not in p:
+                print(v4l_paths.pop(i))
+
         if camera_reorder is not None:
             paths = [v4l_paths[i] for i in camera_reorder]
             v4l_paths = paths
@@ -177,6 +184,7 @@ class BimanualUmiEnv:
                 return data
             vis_transform.append(vis_tf)
 
+        print('v4l_paths: ', v4l_paths)
         camera = MultiUvcCamera(
             dev_video_paths=v4l_paths,
             shm_manager=shm_manager,
@@ -209,8 +217,7 @@ class BimanualUmiEnv:
             j_init = None
 
         assert len(robots_config) == len(grippers_config)
-        +6
-        : List[RTDEInterpolationController] = list()
+        robots: List[RTDEInterpolationController] = list()
         grippers: List[WSGController] = list()
         
         # Load robotic arm
@@ -266,13 +273,33 @@ class BimanualUmiEnv:
                     receive_keys=None,
                     receive_latency=rc['robot_obs_latency']
                 )
+            elif rc['robot_type'].startswith('sim'):
+                this_robot = SimInterpolationController(
+                    shm_manager=shm_manager,
+                    robot_ip=rc['robot_ip'],
+                    frequency=500 if rc['robot_type'] == 'ur5e' else 125,
+                    lookahead_time=0.1,
+                    gain=300,
+                    max_pos_speed=max_pos_speed*cube_diag,
+                    max_rot_speed=max_rot_speed*cube_diag,
+                    launch_timeout=3,
+                    tcp_offset_pose=[0, 0, rc['tcp_offset'], 0, 0, 0],
+                    payload_mass=None,
+                    payload_cog=None,
+                    joints_init=j_init,
+                    joints_init_speed=1.05,
+                    soft_real_time=False,
+                    verbose=False,
+                    receive_keys=None,
+                    receive_latency=rc['robot_obs_latency']
+                )
             else:
                 raise NotImplementedError()
             robots.append(this_robot)
 
         # Load gripper
         for gc in grippers_config:
-            if rc['gripper_type'].startswith('wsg50'):
+            if gc['gripper_type'].startswith('wsg50'):
                 this_gripper = WSGController(
                     shm_manager=shm_manager,
                     hostname=gc['gripper_ip'],
@@ -280,21 +307,22 @@ class BimanualUmiEnv:
                     receive_latency=gc['gripper_obs_latency'],
                     use_meters=True
                 )
-            elif rc['gripper_type'].startswith('hand-e'):
-                this_gripper = RobotiqGripperController(
+            elif gc['gripper_type'].startswith('hand-e'):
+                this_gripper = RobotiqController(
                     shm_manager=shm_manager,
                     hostname=gc['gripper_ip'],
                     port=gc['gripper_port'],
                     receive_latency=gc['gripper_obs_latency'],
                     use_meters=True
                 )
-            elif rc['gripper_type'].startswith('dummy'):
+            elif gc['gripper_type'].startswith('dummy'):
                 this_gripper = DummyGripperController(
                     shm_manager=shm_manager,
                     hostname=gc['gripper_ip'],
                     port=gc['gripper_port'],
                     receive_latency=gc['gripper_obs_latency'],
-                    use_meters=True
+                    use_meters=True,
+                    verbose=False
                 )
             else:
                 raise NotImplementedError()
@@ -343,13 +371,12 @@ class BimanualUmiEnv:
             ready_flag = ready_flag and gripper.is_ready
         return ready_flag
     
-    def start(self, wait=True):
+    def start(self, wait=False):
         self.camera.start(wait=False)
         for robot in self.robots:
             robot.start(wait=False)
         for gripper in self.grippers:
             gripper.start(wait=False)
-
         if self.multi_cam_vis is not None:
             self.multi_cam_vis.start(wait=False)
         if wait:
