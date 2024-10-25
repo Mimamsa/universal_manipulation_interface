@@ -164,6 +164,32 @@ def detect_localize_aruco_tags(
         marker_size_map: Dict[int, float], 
         fisheye_intr_dict: Dict[str, np.ndarray], 
         refine_subpix: bool=True):
+    """
+    Args
+        img (np.ndarray): Input frame.
+        aruco_dict (cv2.aruco.Dictionary): ArUco dictionary (e.g. cv2.aruco.DICT_4X4_50)
+        marker_size_map (Dict[int, float]): Marker size map. See file "example/calibration/aruco_config.yaml"
+        fisheye_intr_dict (Dict[str, np.ndarray]): 
+        refine_subpix (bool): Enable cv2.aruco.CORNER_REFINE_SUBPIX (default: True)
+    Returns
+        tag_dict (Dict[int, Dict[str, np.ndarray]]): Detected ArUco tag locations.
+        e.g.
+        {
+          1: {
+            'rvec': 
+            'tvec': 
+            'corners': 
+            },
+          2: {
+            'rvec': 
+            'tvec': 
+            'corners': 
+            },
+          3: ...
+             ...
+          16: ...
+        }
+    """
     K = fisheye_intr_dict['K']
     D = fisheye_intr_dict['D']
     param = cv2.aruco.DetectorParameters()
@@ -225,6 +251,15 @@ def draw_charuco_board(board, dpi=300, padding_mm=15):
     return board_img
 
 def get_gripper_width(tag_dict, left_id, right_id, nominal_z=0.072, z_tolerance=0.008):
+    """Get gripper width from 'tvec' x-axis distance between left and right tag.
+    Args
+        tag_dict (dict): A dictionary contains 'rvec', 'tvec' and 'corners' information for all tag IDs.
+        left_id (int): ArUco tag ID on left finger
+        right_id (int): ArUco tag ID on right finger
+        nominal_z (float): Nominal Z value for gripper finger tag
+    Returns
+        width (float): Gripper width.
+    """
     zmax = nominal_z + z_tolerance
     zmin = nominal_z - z_tolerance
 
@@ -267,13 +302,22 @@ def draw_canonical_polygon(img: np.ndarray, coords: np.ndarray, color: tuple):
     return img
 
 def get_mirror_canonical_polygon():
+    # left_pts = [
+    #     [540, 1700],
+    #     [680, 1450],
+    #     [590, 1070],
+    #     [290, 1130],
+    #     [290, 1770],
+    #     [550, 1770]
+    # ]
+
     left_pts = [
-        [540, 1700],
-        [680, 1450],
-        [590, 1070],
-        [290, 1130],
-        [290, 1770],
-        [550, 1770]
+        [444, 1679],
+        [582, 1465],
+        [504, 1098],
+        [100, 1200],
+        [100, 1796],
+        [412, 1796]
     ]
     resolution = [2028, 2704]
     left_coords = pixel_coords_to_canonical(left_pts, resolution)
@@ -284,9 +328,13 @@ def get_mirror_canonical_polygon():
 
 
 def get_mirror_crop_slices(img_shape=(1080,1920), left=True):
+    # left_pts = [
+    #     [290, 1120],
+    #     [650, 1480]
+    # ]
     left_pts = [
-        [290, 1120],
-        [650, 1480]
+        [179, 1197],
+        [582, 1463]
     ]
     resolution = [2028, 2704]
     left_coords = pixel_coords_to_canonical(left_pts, resolution)
@@ -302,13 +350,24 @@ def get_mirror_crop_slices(img_shape=(1080,1920), left=True):
 
 
 def get_gripper_canonical_polygon():
+    # left_pts = [
+    #     [1352, 1730],
+    #     [1100, 1700],
+    #     [650, 1500],
+    #     [0, 1350],
+    #     [0, 2028],
+    #     [1352, 2028]
+    # ]
     left_pts = [
-        [1352, 1730],
-        [1100, 1700],
-        [650, 1500],
-        [0, 1350],
-        [0, 2028],
-        [1352, 2704]
+        [1352, 2028],
+        [1352, 1767],
+        [1100, 1748],
+        [627, 1589],
+        [579, 1551],
+        [577, 1473],
+        [444, 1679],
+        [412, 1796],
+        [412, 2028]
     ]
     resolution = [2028, 2704]
     left_coords = pixel_coords_to_canonical(left_pts, resolution)
@@ -317,37 +376,50 @@ def get_gripper_canonical_polygon():
     coords = np.stack([left_coords, right_coords])
     return coords
 
-def get_finger_canonical_polygon(height=0.37, top_width=0.25, bottom_width=1.4):
-    # image size
+# def get_finger_canonical_polygon(height=0.37, top_width=0.25, bottom_width=1.4):
+#     # image size
+#     resolution = [2028, 2704]
+#     img_h, img_w = resolution
+
+#     # calculate coordinates
+#     top_y = 1. - height
+#     bottom_y = 1.
+#     width = img_w / img_h
+#     middle_x = width / 2.
+#     top_left_x = middle_x - top_width / 2.
+#     top_right_x = middle_x + top_width / 2.
+#     bottom_left_x = middle_x - bottom_width / 2.
+#     bottom_right_x = middle_x + bottom_width / 2.
+
+#     top_y *= img_h
+#     bottom_y *= img_h
+#     top_left_x *= img_h
+#     top_right_x *= img_h
+#     bottom_left_x *= img_h
+#     bottom_right_x *= img_h
+
+#     # create polygon points for opencv API
+#     points = [[
+#         [bottom_left_x, bottom_y],
+#         [top_left_x, top_y],
+#         [top_right_x, top_y],
+#         [bottom_right_x, bottom_y]
+#     ]]
+#     coords = pixel_coords_to_canonical(points, img_shape=resolution)
+#     return coords
+
+
+def get_finger_canonical_polygon():
     resolution = [2028, 2704]
-    img_h, img_w = resolution
-
-    # calculate coordinates
-    top_y = 1. - height
-    bottom_y = 1.
-    width = img_w / img_h
-    middle_x = width / 2.
-    top_left_x = middle_x - top_width / 2.
-    top_right_x = middle_x + top_width / 2.
-    bottom_left_x = middle_x - bottom_width / 2.
-    bottom_right_x = middle_x + bottom_width / 2.
-
-    top_y *= img_h
-    bottom_y *= img_h
-    top_left_x *= img_h
-    top_right_x *= img_h
-    bottom_left_x *= img_h
-    bottom_right_x *= img_h
-
-    # create polygon points for opencv API
     points = [[
-        [bottom_left_x, bottom_y],
-        [top_left_x, top_y],
-        [top_right_x, top_y],
-        [bottom_right_x, bottom_y]
+        [120, 2028],
+        [959, 1320],
+        [1745, 1320],
+        [2584, 2028]
     ]]
     coords = pixel_coords_to_canonical(points, img_shape=resolution)
     return coords
+
 
 def draw_predefined_mask(img, color=(0,0,0), mirror=True, gripper=True, finger=True, use_aa=False):
     all_coords = list()

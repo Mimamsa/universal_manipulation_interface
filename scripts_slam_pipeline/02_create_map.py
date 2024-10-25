@@ -24,11 +24,12 @@ from umi.common.cv_util import draw_predefined_mask
 # %%
 @click.command()
 @click.option('-i', '--input_dir', required=True, help='Directory for mapping video')
+@click.option('-s', '--settings_dir', required=True, help='Directory for SLAM settings')
 @click.option('-m', '--map_path', default=None, help='ORB_SLAM3 *.osa map atlas file')
 @click.option('-d', '--docker_image', default="chicheng/orb_slam3:latest")
 @click.option('-np', '--no_docker_pull', is_flag=True, default=False, help="pull docker image from docker hub")
 @click.option('-nm', '--no_mask', is_flag=True, default=False, help="Whether to mask out gripper and mirrors. Set if map is created with bare GoPro no on gripper.")
-def main(input_dir, map_path, docker_image, no_docker_pull, no_mask):
+def main(input_dir, settings_dir, map_path, docker_image, no_docker_pull, no_mask):
     video_dir = pathlib.Path(os.path.expanduser(input_dir)).absolute()
     for fn in ['raw_video.mp4', 'imu_data.json']:
         assert video_dir.joinpath(fn).is_file()
@@ -73,11 +74,13 @@ def main(input_dir, map_path, docker_image, no_docker_pull, no_mask):
         'run',
         '--rm', # delete after finish
         '--volume', str(video_dir) + ':' + '/data',
+        '--volume', str(settings_dir) + ':' + '/settings',
         '--volume', str(map_mount_source.parent) + ':' + str(map_mount_target.parent),
         docker_image,
         '/ORB_SLAM3/Examples/Monocular-Inertial/gopro_slam',
         '--vocabulary', '/ORB_SLAM3/Vocabulary/ORBvoc.txt',
-        '--setting', '/ORB_SLAM3/Examples/Monocular-Inertial/gopro10_maxlens_fisheye_setting_v1_720.yaml',
+        # '--setting', '/ORB_SLAM3/Examples/Monocular-Inertial/gopro10_maxlens_fisheye_setting_v1_720.yaml',
+        '--setting', '/settings/gopro12_maxlens_fisheye_setting.yaml',
         '--input_video', str(video_path),
         '--input_imu_json', str(json_path),
         '--output_trajectory_csv', str(csv_path),

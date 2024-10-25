@@ -378,7 +378,8 @@ def main(input, output, tcp_offset, tx_slam_tag,
 
     # disambiguiate gripper left/right at each demo episode
     cam_serial_right_to_left_idx_map = collections.defaultdict(list)
-    vid_idx_cam_idx_map = np.full(len(video_meta_df), fill_value=-1, dtype=np.int32)
+    vid_idx_cam_idx_map = np.full(len(video_meta_df), fill_value=-1, dtype=np.
+    int32)
     for demo_idx, demo_data in enumerate(demo_data_list):
         video_idxs = demo_data['video_idxs']
         start_timestamp = demo_data['start_timestamp']
@@ -415,6 +416,7 @@ def main(input, output, tcp_offset, tx_slam_tag,
                 break
             
             if (~csv_df['is_lost']).sum() < 60:
+                # drop short episode
                 break
 
             df = csv_df.loc[~csv_df['is_lost']]
@@ -474,11 +476,11 @@ def main(input, output, tcp_offset, tx_slam_tag,
     camera_idx_from_episode_series = pd.Series(
         data=vid_idx_cam_idx_map, 
         index=video_meta_df.index)
-    
+
     # modify df
     video_meta_df['camera_idx'] = camera_idx_series
     video_meta_df['camera_idx_from_episode'] = camera_idx_from_episode_series
-    
+
     rows = list()
     for cs, ci in cam_serial_cam_idx_map.items():
         rows.append({
@@ -492,7 +494,7 @@ def main(input, output, tcp_offset, tx_slam_tag,
     camera_serial_df.sort_index(inplace=True)
     print("Assigned camera_idx: right=0; left=1; non_gripper=2,3...")
     print(camera_serial_df)
-    
+
     # %% stage 6
     # generate dataset plan
     # output
@@ -522,7 +524,7 @@ def main(input, output, tcp_offset, tx_slam_tag,
         demo_video_meta_df = video_meta_df.loc[video_idxs].copy()
         demo_video_meta_df.set_index('camera_idx', inplace=True)
         demo_video_meta_df.sort_index(inplace=True)
-        
+
         # determine optimal alignment
         dt = None
         alignment_costs = list()

@@ -22,11 +22,26 @@ def pos_rot_to_pose(pos, rot):
     return pose
 
 def pose_to_pos_rot(pose):
+    """
+    Args
+        pose (np.array[float,(N,6)]): 
+    Returns
+        (np.array[float,3], scipy.spatial.transform._rotation.Rotation object):
+    """
     pos = pose[...,:3]
     rot = st.Rotation.from_rotvec(pose[...,3:])
     return pos, rot
 
 def pose_to_mat(pose):
+    """
+     Y  Z
+     | /
+     |/__ X
+    Args
+        pose (np.array[float,(N,6)]): post vector [x,y,z,rotX,rotY,rotZ]
+    Returns
+        (np.array[float,(3,3)]): Translation matrix.
+    """
     return pos_rot_to_mat(*pose_to_pos_rot(pose))
 
 def mat_to_pose(mat):
