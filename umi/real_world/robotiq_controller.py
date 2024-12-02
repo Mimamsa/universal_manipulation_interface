@@ -22,7 +22,7 @@ class RobotiqController(mp.Process):
             shm_manager: SharedMemoryManager,
             hostname,
             port=63352,
-            frequency=30,
+            frequency=10,
             home_to_open=True,
             move_max_speed=150.0,  # mm/s
             get_max_k=None,
@@ -32,13 +32,28 @@ class RobotiqController(mp.Process):
             use_meters=False,
             verbose=False
             ):
+        """
+        Args
+            shm_manager (`SharedMemoryManager`):
+            hostname (str):
+            port (uint):
+            frequency (uint): Frequency to command the gripper.
+            home_to_open (bool):
+            move_max_speed (float):
+            get_max_k (uint):
+            command_queue_size (uint): Size of the command queue.
+            launch_timeout (uint):
+            receive_latency (float):
+            use_meters (bool): Set if unit of input `pos` in the command method (e.g. `schedule_waypoint`) is meter. (default: False)
+            verbose (bool): (default: False)
+        """
 
         super().__init__(name="RobotiqController")
         self.hostname = hostname
         self.port = port
         self.frequency = frequency
         self.home_to_open = home_to_open
-        self.move_max_speed = move_max_speed
+        self.move_max_speed = move_max_speed  # must be in mm/s
         self.launch_timeout = launch_timeout
         self.receive_latency = receive_latency
         self.scale = 1000.0 if use_meters else 1.0
@@ -83,7 +98,6 @@ class RobotiqController(mp.Process):
         self.input_queue = input_queue
         self.ring_buffer = ring_buffer
 
-
     # ========= launch method ===========
     def start(self, wait=True):
         super().start()
@@ -91,7 +105,6 @@ class RobotiqController(mp.Process):
             self.start_wait()
         if self.verbose:
             print(f"[RobotiqController] Controller process spawned at {self.pid}")
-
 
     def stop(self, wait=True):
         message = {
@@ -129,7 +142,6 @@ class RobotiqController(mp.Process):
         }
         self.input_queue.put(message)
 
-
     def restart_put(self, start_time):
         self.input_queue.put({
             'cmd': Command.RESTART_PUT.value,
@@ -153,24 +165,18 @@ class RobotiqController(mp.Process):
             # create intance
             with RobotiqGripper(
                 hostname=self.hostname, 
-                port=self.port) as gripper:
+                port=self.port,
+                inversed_pos=True) as gripper:
 
                 # home gripper to initialize
-                #(stop immediately)(homing - gripper open)
                 print("[RobotiqController] Activating gripper...")
                 gripper.activate()
                 if self.home_to_open:
-                    open_pos = gripper.get_open_position()
-                    gripper.move_and_wait_for_pos(open_pos, 150, 185)
-                else:
-                    close_pos = gripper.get_open_position()
-                    gripper.move_and_wait_for_pos(close_pos, 150, 185)
+                    open_pos_mm = gripper.get_open_position()
+                    gripper.move_and_wait_for_pos(open_pos_mm, 150, 21)  # maximum speed and minimum force
 
-                # get initial position (TODO)
-                # curr_info = 
-                # curr_pos = curr_info['position']
-                curr_pos = gripper.get_current_position()
-                # curr_pos = 100.0  # mm, open distance
+                # get initial position
+                curr_pos = gripper.get_current_position()  # DO NOT scale `curr_pos` since unit of `pose_interp` is mm at all.
                 curr_t = time.monotonic()
                 last_waypoint_time = curr_t
                 pose_interp = PoseTrajectoryInterpolator(
@@ -188,9 +194,8 @@ class RobotiqController(mp.Process):
                     t_target = t_now
                     target_pos = pose_interp(t_target)[0]
                     target_vel = (target_pos - pose_interp(t_target - dt)[0]) / dt
-                    # gripper.move_and_wait_for_pos(target_pos, target_vel, 20)  # Do not wait, for reason of get_curr_pos() imediatedly.
-                    gripper.move(target_pos, target_vel, 20)  # minimum force 20N
-                    #print(target_pos, target_vel)
+                    # gripper.move_and_wait_for_pos(target_pos, target_vel, 21)  # Do not wait, for reason of get_curr_pos() imediatedly.
+                    gripper.move(target_pos, target_vel, 21)  # minimum force 20N
 
                     # get state
                     state = {
@@ -200,7 +205,6 @@ class RobotiqController(mp.Process):
                         'gripper_position': gripper.get_current_position() / self.scale,
                         'gripper_velocity': gripper.get_current_speed() / self.scale,
                         'gripper_force': gripper.get_current_force(),
-                        # 'gripper_measure_timestamp': info['measure_timestamp'],
                         'gripper_receive_timestamp': time.time(),
                         'gripper_timestamp': time.time() - self.receive_latency
                     }

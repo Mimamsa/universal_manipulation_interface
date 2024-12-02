@@ -177,9 +177,11 @@ def get_real_umi_action(
     ):
     """
     Args
-        action ():
-        env_obs (Dict[str, np.ndarray]):
-        action_pose_repr (str):
+        action (NDArray[Shape["*, 10*N"], Float]):
+        env_obs (Dict[str, np.ndarray]): Return value of `env.get_obs()`
+        action_pose_repr (str):  'abs', 'relative', 'delta' ('rel' is legacy buggy implementation)
+    Returns
+        (NDArray[,]):
     """
 
     n_robots = int(action.shape[-1] // 10)

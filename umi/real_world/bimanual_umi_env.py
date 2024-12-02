@@ -218,7 +218,8 @@ class BimanualUmiEnv:
 
         assert len(robots_config) == len(grippers_config)
         robots: List[RTDEInterpolationController] = list()
-        grippers: List[WSGController] = list()
+        # grippers: List[WSGController] = list()
+        grippers: List[RobotiqController] = list()
         
         # Load robotic arm
         for rc in robots_config:
@@ -229,7 +230,7 @@ class BimanualUmiEnv:
                     robot_ip=rc['robot_ip'],
                     frequency=500 if rc['robot_type'] == 'ur5e' else 125,
                     lookahead_time=0.1,
-                    gain=300,
+                    gain=200,  # 300
                     max_pos_speed=max_pos_speed*cube_diag,
                     max_rot_speed=max_rot_speed*cube_diag,
                     launch_timeout=3,
@@ -554,6 +555,12 @@ class BimanualUmiEnv:
             actions: np.ndarray, 
             timestamps: np.ndarray,
             compensate_latency=False):
+        """Execute actions.
+        Args
+            actions (np.ndarray):
+            timestamps (np.ndarray):
+            compensate_latency (bool):
+        """
         assert self.is_ready
         if not isinstance(actions, np.ndarray):
             actions = np.array(actions)

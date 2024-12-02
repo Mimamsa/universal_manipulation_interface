@@ -27,7 +27,7 @@ from umi.common.precise_sleep import precise_wait
 @click.option('-gs', '--gripper_speed', type=float, default=200.0)
 def main(robot_hostname, gripper_hostname, gripper_port, frequency, gripper_speed):
     max_pos_speed = 0.25
-    max_rot_speed = 0.6
+    max_rot_speed = 0.4
     cube_diag = np.linalg.norm([1,1,1])
     tcp_offset = 0.13
     # tcp_offset = 0
@@ -41,6 +41,7 @@ def main(robot_hostname, gripper_hostname, gripper_port, frequency, gripper_spee
             port=gripper_port,
             frequency=frequency,
             move_max_speed=150.0,
+            use_meters=True,
             verbose=False
         ) as gripper,\
         RTDEInterpolationController(
@@ -48,7 +49,7 @@ def main(robot_hostname, gripper_hostname, gripper_port, frequency, gripper_spee
             robot_ip=robot_hostname,
             frequency=500,
             lookahead_time=0.05,
-            gain=1000,
+            gain=500,
             max_pos_speed=max_pos_speed*cube_diag,
             max_rot_speed=max_rot_speed*cube_diag,
             tcp_offset_pose=[0,0,tcp_offset,0,0,0],

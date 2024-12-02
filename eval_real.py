@@ -252,7 +252,6 @@ def main(input, output, robot_config,
             print('obs_pose_rep', obs_pose_rep)
             print('action_pose_repr', action_pose_repr)
 
-
             device = torch.device('cuda')
             policy.eval().to(device)
 

@@ -4,12 +4,14 @@
   "robots": [
     {
       "robot_type": "ur5e",
-      "robot_ip": "192.168.10.3",
-      "robot_obs_latency": 0.0001, "robot_action_latency": 0.1, "tcp_offset": 0.26713,
-      # "payload_mass": 1.730, "payload_cog": [0, -0.016, 0.066],
+      "robot_ip": "192.168.10.4",
+      "robot_obs_latency": 0.0001, "robot_action_latency": 0.1,
+      # "tcp_offset": 0.158,
+      "tcp_offset": 0.26713,
+      "payload_mass": 1.730, "payload_cog": [0, -0.016, 0.066],  # [0, -0.016, 0.066] y up, z forward, x left
       # table height for finger-table collision avoidance
       # -inf to disable
-      "height_threshold": -0.007,  # table: -0.017
+      "height_threshold": -0.01,  # table: -0.017
       # sphere collision primitive size and location for inter-gripper collision avoidance
       # 0 to disable
       "sphere_radius": 0.1, "sphere_center": [0, -0.06, -0.185]
@@ -19,7 +21,7 @@
   "grippers": [
     {
       "gripper_type": "hand-e",
-      "gripper_ip": "192.168.10.3",
+      "gripper_ip": "192.168.10.4",
       "gripper_port": 63352, "gripper_obs_latency": 0.01, "gripper_action_latency": 0.1
     },
   ],

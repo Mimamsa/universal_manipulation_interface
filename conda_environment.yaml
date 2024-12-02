@@ -22,6 +22,7 @@ dependencies:
   - tqdm=4.65
   - zarr=2.16
   - numcodecs=0.11
+  - huggingface_hub==0.24.6
   - hydra-core=1.2.0
   - wandb=0.15.8
   - dill=0.3.7

@@ -24,9 +24,9 @@ def pos_rot_to_pose(pos, rot):
 def pose_to_pos_rot(pose):
     """
     Args
-        pose (np.array[float,(N,6)]): 
+        pose (NDArray[Shape["*, 6"], float]): A stack of pose [x,y,z,rotX,rotY,rotZ].
     Returns
-        (np.array[float,3], scipy.spatial.transform._rotation.Rotation object):
+        (Tuple[NDArray[Shape["*, 3"], float], NDArray[Shape["*, 3"], float]): Position and rotation vector.
     """
     pos = pose[...,:3]
     rot = st.Rotation.from_rotvec(pose[...,3:])
@@ -38,9 +38,9 @@ def pose_to_mat(pose):
      | /
      |/__ X
     Args
-        pose (np.array[float,(N,6)]): post vector [x,y,z,rotX,rotY,rotZ]
+        pose (NDArray[Shape["*, 6"], float]): A stack of pose [x,y,z,rotX,rotY,rotZ].
     Returns
-        (np.array[float,(3,3)]): Translation matrix.
+        (NDArray[Shape["*, 3, 3"], float]): A stack of transformation matrix.
     """
     return pos_rot_to_mat(*pose_to_pos_rot(pose))
 
@@ -93,12 +93,19 @@ def rot_from_directions(from_vec, to_vec):
     return rot
 
 def normalize(vec, eps=1e-12):
+    """Normalize a stack of 3-D vectors """
     norm = np.linalg.norm(vec, axis=-1)
     norm = np.maximum(norm, eps)
     out = (vec.T / norm).T
     return out
 
 def rot6d_to_mat(d6):
+    """Convert a stack of 6-D representations to a stack of 3x3 rotation matrices.
+    Args
+        d6 (NDArray[Shape["*, 6"], float]): A stack of Concatenation of the first 2 rows of rotation matrix.
+    Returns
+        (NDArray[Shape["*, 3, 3"], float]): A stack of 3x3 rotation matrices.
+    """
     a1, a2 = d6[..., :3], d6[..., 3:]
     b1 = normalize(a1)
     b2 = a2 - np.sum(b1 * a2, axis=-1, keepdims=True) * b1
@@ -108,6 +115,12 @@ def rot6d_to_mat(d6):
     return out
 
 def mat_to_rot6d(mat):
+    """Convert a stack of 3x3 rotation matrices to a stack of 6-D representations by extract and concatenate the first 2 rows.
+    Args
+        mat (NDArray[Shape["*, 3, 3"], float]): A stack of rotation matrix.
+    Returns
+        (NDArray[Shape["*, 6"], float]): A stack of 6-D representations.
+    """
     batch_dim = mat.shape[:-2]
     out = mat[..., :2, :].copy().reshape(batch_dim + (6,))
     return out

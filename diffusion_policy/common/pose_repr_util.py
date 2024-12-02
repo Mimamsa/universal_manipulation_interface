@@ -48,12 +48,12 @@ def compute_relative_pose(pos, rot, base_pos, base_rot_mat,
 def convert_pose_mat_rep(pose_mat, base_pose_mat, pose_rep='abs', backward=False):
     """Convert pose matrix representation.
     e.g. pose_mat: predicted pose, base_pose_mat: EE pose, backward=True
-    
     Args
-        pose_mat (NDArray[Shape["*, 4, 4"], Float]):
-        base_pose_mat (NDArray[Shape["4, 4"], Float]):
-        pose_rep (str): There are 4 representations: abs, rel, relative and delta.
-        backward (bool):
+        pose_mat (NDArray[Shape["*, 4, 4"], Float]): Pose matrices to be converted.
+        base_pose_mat (NDArray[Shape["4, 4"], Float]): Base pose matrix. Normally it's the first pose in an episode.
+        pose_rep (str): There are 3 pose representations: abs, relative and delta ('rel' is legacy buggy implementation).
+        backward (bool): If True, convert the pose representation from absoulte to relative w.r.t the base pose;
+            If False, convert the pose representation from relative to absoulte w.r.t the base pose
     Returns
     """
     if not backward:
